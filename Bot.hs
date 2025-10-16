@@ -9,7 +9,7 @@ import Geometry
 data BotAction = Mover AccionMovimiento  -- moverse (acelerar, frenar, mantener)
                | RotarBody Angle         -- girar el cañón o el cuerpo
                | RotarCanon Angle        -- no hacer nada este turno
-               | Disparar Vector Float       -- disparar en cierta dirección
+               | Disparar Vector         -- disparar en cierta dirección
                deriving (Eq, Show)
 
 -- Juego simplificado para la toma de decisiones.

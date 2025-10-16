@@ -8,7 +8,7 @@ data Entidad a = Entidad {
     id_entidad :: Int,
     posicion :: Position,
     modulo_velocidad :: Float,
-    direccion :: (Vector Float),
+    direccion :: Vector,
     ancho :: Float,
     alto :: Float,
     datos_especificos :: a  -- parámetro de tipo para datos específicos (DatosRobot o DatosProyectil)
@@ -78,11 +78,11 @@ setMemoria robot nueva_memoria =
 
 
 -- CONSTRUCTORES CONVENIENTES
-crearRobot :: Int -> Position -> Float -> Vector Float-> Float -> Float -> Int -> Angle -> Distance -> Memoria -> Robot
+crearRobot :: Int -> Position -> Float -> Vector -> Float -> Float -> Int -> Angle -> Distance -> Memoria -> Robot
 crearRobot id_r pos mod_v dir ancho_r alto_r energia_r angulo radar_r memoria_r = 
     Entidad id_r pos mod_v dir ancho_r alto_r (DatosRobot energia_r angulo radar_r memoria_r)
 
-crearProyectil :: Int -> Int -> Position -> Float -> Vector Float-> Float -> Float -> Proyectil
+crearProyectil :: Int -> Int -> Position -> Float -> Vector -> Float -> Float -> Proyectil
 crearProyectil id_p id_lanz pos mod_v dir ancho_p alto_p = 
     Entidad id_p pos mod_v dir ancho_p alto_p (DatosProyectil id_lanz)
 
@@ -134,14 +134,14 @@ updateVelocity robot Mantiene = robot
 
 -- Actualiza posición en función de la velocidad y el incremento de tiempo
 updatePosition :: Entidad a -> Float -> Entidad a
-updatePosition e delta_tiempo = e {posicion = Vector (x + vx*delta_tiempo) (y + vy*delta_tiempo)}
-    where Vector x y = posicion e
-          Vector vx vy = multEscalar (modulo_velocidad e) (direccion e)
+updatePosition e delta_tiempo = e {posicion = (x + vx*delta_tiempo, y + vy*delta_tiempo)}
+    where (x, y) = posicion e
+          (vx, vy) = multEscalar (modulo_velocidad e) (direccion e)
 
 
 -- No lo ha pedido pero creemos que necesitamos una funcion para mover el robot y el cañon
 -- Actualiza la dirección de un robot para que el bot pueda girarlo
-updateAngleRobot :: Robot -> Vector Float-> Robot
+updateAngleRobot :: Robot -> Vector -> Robot
 updateAngleRobot robot v = robot {direccion = v}
 
 -- Actualiza el angulo de disparo del robot para que el bot pueda girar el cañón

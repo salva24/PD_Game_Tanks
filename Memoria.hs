@@ -1,6 +1,5 @@
 module Memoria where
 
-import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import Geometry
 
@@ -11,7 +10,7 @@ data Value =
     | VPoint Point
     | VBool Bool 
     | VFloat Float
-    | VVector (Vector Float)
+    | VVector Vector
     | ListIntValue [Int]
     | ListPointValue [Point]
     | RefRobotId Int
@@ -41,34 +40,59 @@ memGet k (Memoria m) = Map.lookup k m
 -- Obtener valores de la memoria (de forma concreta)
 -- Gets por tipo
 getInt :: Key -> Memoria -> Maybe Int
-getInt k = fmap (\(VInt n) -> n) . memGet k
+getInt key memory = case memGet key memory of
+    Just (VInt n) -> Just n
+    _             -> Nothing
 
+-- Obtener flotante de memoria
 getFloat :: Key -> Memoria -> Maybe Float
-getFloat k = fmap (\(VFloat f) -> f) . memGet k
+getFloat key memory = case memGet key memory of
+    Just (VFloat f) -> Just f
+    _               -> Nothing
 
+-- Obtener cadena de memoria
 getString :: Key -> Memoria -> Maybe String
-getString k = fmap (\(VStr s) -> s) . memGet k
+getString key memory = case memGet key memory of
+    Just (VStr s) -> Just s
+    _             -> Nothing
 
+-- Obtener booleano de memoria
 getBool :: Key -> Memoria -> Maybe Bool
-getBool k = fmap (\(VBool b) -> b) . memGet k
+getBool key memory = case memGet key memory of
+    Just (VBool b) -> Just b
+    _              -> Nothing
 
+-- Obtener punto de memoria
 getPoint :: Key -> Memoria -> Maybe Point
-getPoint k = fmap (\(VPoint p) -> p) . memGet k
+getPoint key memory = case memGet key memory of
+    Just (VPoint p) -> Just p
+    _               -> Nothing
 
-getVector :: Key -> Memoria -> Maybe (Vector Float)
-getVector k = fmap (\(VVector v) -> v) . memGet k
+-- Obtener vector de memoria
+getVector :: Key -> Memoria -> Maybe Vector
+getVector key memory = case memGet key memory of
+    Just (VVector v) -> Just v
+    _                -> Nothing
 
+-- Obtener referencia a robot 
 getRobotRef :: Key -> Memoria -> Maybe Int
-getRobotRef k = fmap (\(RefRobotId i) -> i) . memGet k
+getRobotRef key memory = case memGet key memory of
+    Just (RefRobotId id) -> Just id
+    _                    -> Nothing
 
 -- Obtener lista de enteros con valor por defecto
-getListIntOr :: Key -> Memoria -> Maybe [Int]
-getListIntOr k (Memoria m) =
-  (fmap (\(ListIntValue xs) -> xs) (Map.lookup k m))
+getListIntOr :: Key -> Memoria -> [Int]
+getListIntOr key (Memoria m) =
+    case Map.lookup key m of
+        Just (ListIntValue lst) -> lst
+        _                       -> []
 
-getListPointOr :: Key -> Memoria -> Maybe [Point]
-getListPointOr k (Memoria m) =
-  (fmap (\(ListPointValue ps) -> ps) (Map.lookup k m))
+-- Obtener lista de puntos con valor por defecto
+getListPointOr :: Key -> Memoria -> [Point]
+getListPointOr key (Memoria m) =
+    case Map.lookup key m of
+        Just (ListPointValue lst) -> lst
+        _                         -> []
 
 
 -- Elimina un valor de la memoria
@@ -93,35 +117,54 @@ memKeys (Memoria m) = Map.keys m
 -- Funciones de modificación e incremento
 -- Sumar un entero
 addToInt :: Key -> Int -> Memoria -> Memoria
-addToInt k v memoria =
-  let valorActual = fromMaybe 0 (getInt k memoria)
-  in memStore k (VInt (valorActual + v)) memoria
+addToInt k v memoria = memStore k (VInt (valorActual + v)) memoria
+  where
+    valorActual = case getInt k memoria of
+                    Just n  -> n
+                    Nothing -> 0
 
+-- Suma un float
 addToFloat :: Key -> Float -> Memoria -> Memoria
-addToFloat k v memoria =
-  let valorActual = fromMaybe 0 (getFloat k memoria)
-  in memStore k (VFloat (valorActual + v)) memoria
+addToFloat k v memoria = memStore k (VFloat (valorActual + v)) memoria
+  where
+    valorActual = case getFloat k memoria of
+                    Just n  -> n
+                    Nothing -> 0
 
+-- Alterna un bool
 altBool :: Key -> Memoria -> Memoria 
-altBool k memoria =
-  let valorActual = fromMaybe False (getBool k memoria)
-  in memStore k (VBool (not valorActual)) memoria
+altBool k memoria = memStore k (VBool (not valorActual)) memoria
+  where
+    valorActual = case getBool k memoria of
+                    Just b  -> b
+                    Nothing -> False
 
+-- Modifica entero
 modifyInt :: Key -> (Int -> Int) -> Memoria -> Memoria
-modifyInt k f memoria =
-  maybe memoria (\n -> memStore k (VInt (f n)) memoria) (getInt k memoria)
+modifyInt key f memoria =
+  case getInt key memoria of
+    Just n  -> memStore key (VInt (f n)) memoria
+    Nothing -> memoria
 
+-- Modifica float
 modifyFloat :: Key -> (Float -> Float) -> Memoria -> Memoria
-modifyFloat k f memoria =
-  maybe memoria (\x -> memStore k (VFloat (f x)) memoria) (getFloat k memoria)
+modifyFloat key f memoria =
+  case getFloat key memoria of
+    Just x  -> memStore key (VFloat (f x)) memoria
+    Nothing -> memoria
 
 -- Añadir un entero a una lista de enteros
 appendInt :: Key -> Int -> Memoria -> Memoria
-appendInt k val memoria =
-  let oldList = fromMaybe [] (getListIntOr k memoria)
-  in memStore k (ListIntValue (oldList ++ [val])) memoria
+appendInt key val memoria =
+  let oldList = case memGet key memoria of
+                  Just (ListIntValue xs) -> xs
+                  _ -> []
+  in memStore key (ListIntValue (oldList ++ [val])) memoria
 
+-- Añadir un punto a una lista de puntos
 appendPoint :: Key -> Point -> Memoria -> Memoria
-appendPoint k p memoria =
-  let oldList = fromMaybe [] (getListPointOr k memoria)
-  in memStore k (ListPointValue (oldList ++ [p])) memoria
+appendPoint key p memoria =
+  let oldList = case memGet key memoria of
+                  Just (ListPointValue ps) -> ps
+                  _ -> []
+  in memStore key (ListPointValue (oldList ++ [p])) memoria
