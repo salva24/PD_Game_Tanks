@@ -1,7 +1,9 @@
+-- Módulo que tiene los tipos proyectil y robot
 module Entidades where
 
 import Geometry
 import Memoria
+import Hyperparams
 
 -- TIPO GENÉRICO BASE CON PARÁMETRO DE TIPO
 data Entidad a = Entidad {
@@ -19,7 +21,9 @@ data DatosRobot = DatosRobot {
     energia :: Int,
     angulo_disparo :: Angle,
     radar :: Distance,
-    memoria :: Memoria
+    memoria :: Memoria,
+    funcion_decision :: String, -- función de decisión del bot
+    momento_ultimo_disparo :: Float -- tiempo en el que disparó por última vez
 } deriving (Eq, Show)
 
 data DatosProyectil = DatosProyectil {
@@ -56,6 +60,14 @@ getMemoria robot = memoria (datos_especificos robot)
 getIdLanzador :: Proyectil -> Int
 getIdLanzador proy = id_lanzador (datos_especificos proy)
 
+-- Obtener función de decisión de un robot
+getFuncionDecision :: Robot -> String
+getFuncionDecision robot = funcion_decision (datos_especificos robot)
+
+-- Obtener momento del último disparo de un robot
+getMomentoUltimoDisparo :: Robot -> Float
+getMomentoUltimoDisparo robot =  momento_ultimo_disparo (datos_especificos robot)
+
 -- Modificar energía de un robot
 setEnergia :: Robot -> Int -> Robot
 setEnergia robot nueva_energia = 
@@ -76,11 +88,16 @@ setMemoria :: Robot -> Memoria -> Robot
 setMemoria robot nueva_memoria = 
     robot {datos_especificos = (datos_especificos robot) {memoria = nueva_memoria}}
 
+-- Set el momento del último disparo de un robot
+setMomentoUltimoDisparo :: Robot -> Float -> Robot
+setMomentoUltimoDisparo robot nuevo_momento = 
+    robot {datos_especificos = (datos_especificos robot) {momento_ultimo_disparo = nuevo_momento}}
+
 
 -- CONSTRUCTORES CONVENIENTES
-crearRobot :: Int -> Position -> Float -> Vector -> Float -> Float -> Int -> Angle -> Distance -> Memoria -> Robot
-crearRobot id_r pos mod_v dir ancho_r alto_r energia_r angulo radar_r memoria_r = 
-    Entidad id_r pos mod_v dir ancho_r alto_r (DatosRobot energia_r angulo radar_r memoria_r)
+crearRobot :: Int -> Position -> Float -> Vector -> Float -> Float -> Int -> Angle -> Distance -> Memoria -> String -> Float -> Robot
+crearRobot id_r pos mod_v dir ancho_r alto_r energia_r angulo radar_r memoria_r f_dec ultima_vez_disparo = 
+    Entidad id_r pos mod_v dir ancho_r alto_r (DatosRobot energia_r angulo radar_r memoria_r f_dec ultima_vez_disparo)
 
 crearProyectil :: Int -> Int -> Position -> Float -> Vector -> Float -> Float -> Proyectil
 crearProyectil id_p id_lanz pos mod_v dir ancho_p alto_p = 
@@ -118,32 +135,31 @@ updateVelocity :: Robot -> AccionMovimiento -> Robot
 
 -- Caso de acción de acelerar: acelera sin sobrepasar la velocidad máxima
 updateVelocity robot Acelera
-    | v + 1 < maxV = updateRobotVelocity robot (v + 1)
-    | otherwise    = updateRobotVelocity robot maxV
+    | v + incrementoVelocidad < maxAllowedVelocity = updateRobotVelocity robot (v + incrementoVelocidad)
+    | otherwise    = updateRobotVelocity robot maxAllowedVelocity
     where v    = modulo_velocidad robot
-          maxV = maxVelocity
 
 -- Caso de acción de desacelerar: desacelera sin bajar de 0
 updateVelocity robot Desacelera
-    | v - 1 > 0   = updateRobotVelocity robot (v - 1)
+    | v - incrementoVelocidad > 0   = updateRobotVelocity robot (v - incrementoVelocidad)
     | otherwise   = updateRobotVelocity robot 0
   where v = modulo_velocidad robot
 
 -- Caso de acción de mantener: no cambia la velocidad
-updateVelocity robot Mantiene = robot
+updateVelocity robot Mantiene = robot -- Esto no se uy se trata de una version antigua d eotra entrega
 
--- Actualiza posición en función de la velocidad y el incremento de tiempo
+-- Actualiza posición de proyectil o robot en función de la velocidad y el incremento de tiempo
 updatePosition :: Entidad a -> Float -> Entidad a
 updatePosition e delta_tiempo = e {posicion = (x + vx*delta_tiempo, y + vy*delta_tiempo)}
     where (x, y) = posicion e
           (vx, vy) = multEscalar (modulo_velocidad e) (direccion e)
 
 
--- No lo ha pedido pero creemos que necesitamos una funcion para mover el robot y el cañon
+-- No lo ha pedido pero creemos que necesitamos una funcion para mover el robot y el cagnon
 -- Actualiza la dirección de un robot para que el bot pueda girarlo
 updateAngleRobot :: Robot -> Vector -> Robot
 updateAngleRobot robot v = robot {direccion = v}
 
--- Actualiza el angulo de disparo del robot para que el bot pueda girar el cañón
+-- Actualiza el angulo de disparo del robot para que el bot pueda girar el cagnón
 updateAngleCanon :: Robot -> Angle -> Robot
 updateAngleCanon robot a = setAnguloDisparo robot a

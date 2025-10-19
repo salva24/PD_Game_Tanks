@@ -1,21 +1,22 @@
+-- Módulo con funciones de geometría básica
+
 module Geometry where
+import Hyperparams
+
 -- 1. TIPOS DEFINIDOS
 type Point = (Float,Float)  -- Point. Un punto 2D en el espacio.
 type Vector = (Float,Float) -- Vector siempre se considera que empieza en (0,0)
 type Angle = Float          -- Angulo en grados (con decimales)
 type Distance = Float       -- Distance. Un valor de distancia con decimales.
 type Position = Point       -- Position. Representa la posición de objeto en un mundo 2D.
--- Size = ((xmin,xmax) , (ymin, ymax))
-type Size = ((Float,Float) , (Float,Float))
 
 
 -- FUNCIONES
 -- Distancia euclidiana entre 2 posiciones en el espacio.
 distanceBetween :: Position -> Position -> Distance
 distanceBetween (x1,y1) (x2,y2) = sqrt((dx)^2 + (dy)^2)
-    where 
-        dx = x2 - x1
-        dy = y2 - y1
+    where dx = x2 - x1
+          dy = y2 - y1
 
 
 -- Determina el ángulo desde una posición origen hacia una posición objetivo.
@@ -82,6 +83,14 @@ mul :: (Float,Float) -> (Float,Float) -> (Float,Float)
 
 
 --FUNCIONES RELACIONADAS CON COLISIONES PERO NO EXCLUSIVAMENTE
+-- Tipo rectángulo (figura robot y o misil)
+data Rectangle = Rectangle {
+    center :: Point,
+    size :: (Float, Float),  -- (ancho, alto)
+    angleRectang :: Angle -- angulo de direccion del rectangulo (con el se puede sacar el angulo de rotacion)
+} deriving (Show, Eq)
+
+
 -- se usa en otro modulos 
 normaliza :: Vector -> Vector
 normaliza (x, y)
@@ -91,3 +100,29 @@ normaliza (x, y)
 
 vectorToAngle :: Vector -> Angle
 vectorToAngle (x, y) = rad2deg (atan2 y x)
+
+-- Convertir ángulo a vector unitario
+angleToVector :: Angle -> Vector
+angleToVector angle = (cos rad, sin rad)
+    where rad = deg2rad angle
+
+-- Función que convierte un rectángulo en sus 4 puntos
+rectangleToVertices :: Rectangle -> [Point]
+rectangleToVertices (Rectangle (cx, cy) (w, h) ang) = [(cx + x, cy + y) | (x, y) <- rotatedPoints]
+    where halfW = w / 2
+          halfH = h / 2
+          -- Definimos los 4 vértices
+          p1 = (-halfW, -halfH)  -- inferior izquierda
+          p2 = (halfW, -halfH)   -- inferior derecha
+          p3 = (halfW, halfH)    -- superior derecha
+          p4 = (-halfW, halfH)   -- superior izquierda
+          -- Usamos getVertices para rotar los puntos
+          rotatedPoints = getVertices (p1, p2, p3, p4, ang)
+
+-----------------------------------------------------------
+-- comprueba si un rectangulo se sale de los limites dados
+-- Sirve para comprobar si el cuerpp de un robot, el cagnon de un robot o un proyectil se sale de los limites del mapa
+isRectangleOutOfBounds :: Rectangle -> Bool
+isRectangleOutOfBounds rect =
+    any (\(x, y) -> not (isInBounds (x, y) globalBounds)) vertices -- si algún vértice está fuera de los límites
+    where vertices = rectangleToVertices rect -- obtenemos los vertices del rectangulo

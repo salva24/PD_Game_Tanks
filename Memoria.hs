@@ -1,20 +1,20 @@
+--Módulo cin la memoria que es lo que tienen los bots para tomar decisiones. La memoria representa aquelo que el bot sabe o cree de la partida
 module Memoria where
 
 import qualified Data.Map as Map
 import Geometry
 
 -- Esta es la memoria del Robot, para que guarde la información recopilando de la partida
-data Value = 
-    VInt Int 
-    | VStr String 
-    | VPoint Point
-    | VBool Bool 
-    | VFloat Float
-    | VVector Vector
-    | ListIntValue [Int]
-    | ListPointValue [Point]
-    | RefRobotId Int
-    deriving (Eq, Show)
+data Value = VInt Int 
+           | VStr String 
+           | VPoint Point
+           | VBool Bool 
+           | VFloat Float
+           | VVector Vector
+           | ListIntValue [Int]
+           | ListPointValue [Point]
+           | RefRobotId Int
+           deriving (Eq, Show)
 
 type Key = String
 
@@ -153,7 +153,7 @@ modifyFloat key f memoria =
     Just x  -> memStore key (VFloat (f x)) memoria
     Nothing -> memoria
 
--- Añadir un entero a una lista de enteros
+-- Agnadir un entero a una lista de enteros
 appendInt :: Key -> Int -> Memoria -> Memoria
 appendInt key val memoria =
   let oldList = case memGet key memoria of
@@ -161,7 +161,7 @@ appendInt key val memoria =
                   _ -> []
   in memStore key (ListIntValue (oldList ++ [val])) memoria
 
--- Añadir un punto a una lista de puntos
+-- Agnadir un punto a una lista de puntos
 appendPoint :: Key -> Point -> Memoria -> Memoria
 appendPoint key p memoria =
   let oldList = case memGet key memoria of

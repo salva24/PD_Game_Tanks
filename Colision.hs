@@ -1,27 +1,21 @@
 module Colision where
 
 import Entidades
+-- hiding lo que hace es evitar los conflictos (no importar ciertas funciones o tipos con el mismo nombre)
 import Geometry
 
 -- Evento de colisión
 data CollisionEvent = 
-    RobotProjectileCollision Robot Proyectil |
-    RobotRobotCollision Robot Robot
+    RobotProjectileCollision Robot Proyectil | -- Esto sí se produce, sólo es posible colisionar un robot y un proyectil
+    RobotRobotCollision Robot Robot -- Esto no se produce nunca y solo esta en el codigo por eversiones de entregas anteriores
     deriving (Show, Eq)
-
--- Tipo rectángulo (figura robot y o misil)
-data Rectangle = Rectangle {
-    center :: Point,
-    size :: (Float, Float),  -- (ancho, alto)
-    angle :: Angle
-} deriving (Show, Eq)
 
 -- Convertir robot en rectángulo
 robotToRectangle :: Robot -> Rectangle
 robotToRectangle robot = Rectangle {
     center = posicion robot,
     size = (ancho robot, alto robot),
-    angle = vectorToAngle (direccion robot)
+    angleRectang = vectorToAngle (direccion robot)
 }
 
 -- Convertir proyectil en rectángulo
@@ -29,7 +23,7 @@ projectileToRectangle :: Proyectil -> Rectangle
 projectileToRectangle proyectil = Rectangle {
     center = posicion proyectil,
     size = (ancho proyectil, alto proyectil),
-    angle = vectorToAngle (direccion proyectil)
+    angleRectang = vectorToAngle (direccion proyectil)
 }
 
 -- Función para comprobar que dos proyecciones se solapan
@@ -56,19 +50,6 @@ getSeparatingAxes vertices = take (length axes `div` 2) axes
           axes  = [normaliza (perp edge) | edge <- edges]
 -- Lados calculados
 -- Lado superior = v2 - v1 , Lado derecho = v3 - v2 , Lado inferior = v4 - v3 , Lado izquierdo = v1 - v4 
-
--- Función que convierte un rectángulo en sus 4 puntos
-rectangleToVertices :: Rectangle -> [Point]
-rectangleToVertices (Rectangle (cx, cy) (w, h) ang) = [(cx + x, cy + y) | (x, y) <- rotatedPoints]
-    where halfW = w / 2
-          halfH = h / 2
-          -- Definimos los 4 vértices
-          p1 = (-halfW, -halfH)  -- inferior izquierda
-          p2 = (halfW, -halfH)   -- inferior derecha
-          p3 = (halfW, halfH)    -- superior derecha
-          p4 = (-halfW, halfH)   -- superior izquierda
-          -- Usamos getVertices para rotar los puntos
-          rotatedPoints = getVertices (p1, p2, p3, p4, ang)
 
 -- Comprueba si dos rectángulos han colisionado usando SAT
 checkCollision :: Rectangle -> Rectangle -> Bool
@@ -97,7 +78,6 @@ detectRobotProjectileCollisions robots proyectiles =
         checkCollision (robotToRectangle r) (projectileToRectangle p) -- Comprobamos si han colisionado
     ]
 
-
 -- Función para detectar colisiones entre robots
 detectRobotRobotCollisions :: [Robot] -> [CollisionEvent]
 detectRobotRobotCollisions robots = 
@@ -112,3 +92,11 @@ detectRobotRobotCollisions robots =
 -- Función principal que coordina todas las comprobaciones de colisión.
 checkCollisions :: [Robot] -> [Proyectil] -> [CollisionEvent]
 checkCollisions robots proyectiles = detectRobotProjectileCollisions robots proyectiles ++ detectRobotRobotCollisions robots
+
+
+-- dado un robot y una lista de robots mira is hay una colision ente el robot y alguno de la lista
+-- Comprueba si hay alguna colisión entre el robot dado y otros robots en la lista
+-- Si colisiona consigo mismo no cuenta como colision
+-- Esta funcion se usa en GameUpdates para comprobar si la nueva posicion del robot tras aplicar su movimiento es valida o no
+hasRobotCollision :: Robot -> [Robot] -> Bool
+hasRobotCollision robot otrosRobots = any (\r -> id_entidad r /= id_entidad robot && checkCollision (robotToRectangle robot) (robotToRectangle r)) otrosRobots
