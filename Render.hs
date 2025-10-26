@@ -10,50 +10,89 @@ import Hyperparams
 -- DIBUJA ESCENA COMPLETA (la imagen de fondo y tanques/explosiones/proyectiles)
 dibujaRender :: GameState -> Picture
 dibujaRender e
-  | gameOver e = Pictures [fondo e, mensajeGameOver]
-  | otherwise  = Pictures
+  | pantalla e == MenuInicio = menuInicioJuego
+  | gameOver e               = Pictures [fondo e, mensajeGameOver]
+  | otherwise                = Pictures
     [ Scale 1 1 (fondo e),
       barraSuperior (length (allRobots e)) (length (allProyectiles e)) (length (allExplosiones e)) (floor(tiempo e)),
-      Pictures $ map dibujaUnRobot (allRobots e),   -- dibuja todos los robots
       dibujaProyectiles e,                          -- dibuja todas los proyectiles
+      Pictures $ map (dibujaUnRobot e) (allRobots e),   -- Pasar GameState aquí
       dibujaExplosiones e,                          -- dibuja todas las explosiones
       if gamePausado e then mensajePausa else Blank
     ]
-  where mensajePausa    = dibujaMensaje "PAUSADO" yellow (0.25,0.25)
-        mensajeGameOver = dibujaMensaje "GAME OVER" red (0.3,0.3)
+  where mensajePausa    = dibujaMensajeNegrita "PAUSADO" yellow 0 0 0.25 0.25
+        mensajeGameOver = dibujaMensajeNegrita ("Ganador: " ++ ganadorText e) red 0 0 0.3 0.3
 
+-- obtener id del ganador: si hay exactamente un robot vivo, usa su id_entidad
+ganadorText :: GameState -> String
+ganadorText gs
+  | null robotsVivos = "N/A"
+  | otherwise        = show (id_entidad (head robotsVivos))
+  where robotsVivos = filter isRobotAlive (allRobots gs)
+-- -----------------------------------------------------------------------------
+-- PANTALLA DE INICIO DEL JUEGO
+menuInicioJuego :: Picture
+menuInicioJuego = Pictures [fondoMenu, textoInicio, botonStart]
+
+-- Fondo para el menú de inicio
+fondoMenu :: Picture
+fondoMenu = Color white $ rectangleSolid (fromIntegral anchoV) (fromIntegral altoV)
+
+-- Texto de bienvenida
+textoInicio :: Picture
+textoInicio = Pictures
+  [ negrita "BIENVENIDO a Hotdog War - GRUPO 3" black (-450) 130 0.3 0.3,
+    negrita "Presiona ENTER o Click Izquierdo para Iniciar" black (-450) 70 0.3 0.3
+  ]
+
+-- Func. auxiliar para crear texto con efecto de negrita
+negrita :: String -> Color -> Float -> Float -> Float -> Float -> Picture
+negrita texto colorTexto x y sx sy = Pictures
+  [ Translate (x + dx) (y + dy) $ Scale sx sy $ Color colorTexto $ Text texto
+  | dx <- [-1,0,1,-1,2], dy <- [-1,0,1,-1,2]
+  ]
+
+-- Botón Start visual (solo decorativo)
+botonStart :: Picture
+botonStart = Pictures
+  [ Color black $ rectangleSolid botonStartWidth botonStartHeight,
+    Translate (-buttonTextOffsetX) (-15) $ Scale 0.3 0.3 $ Color white $ Text "START"
+  ]
+  where buttonTextOffsetX = botonStartWidth / 4  -- pequegno ajuste para centrar el texto visualmente
+-- -----------------------------------------------------------------------------
 -- BARRA SUPERIOR DEL JUEGO (muestra la información del juego)
 barraSuperior :: Int -> Int -> Int -> Int -> Picture
 barraSuperior nRobots nProy nExp t = Pictures
-  [ Translate 0 294 $ Color white $ rectangleSolid 1053 60,           -- fondo barra
-    Translate (-480) 285 $ Scale 0.15 0.15 $ Color black $ Text ("Robots: " ++ show nRobots),  -- texto dentro de la barra
-    Translate (-370) 285 $ Scale 0.15 0.15 $ Color black $ Text ("Projectiles: " ++ show nProy),  -- texto dentro de la barra
-    Translate (-230) 285 $ Scale 0.15 0.15 $ Color black $ Text ("Explosiones: " ++ show nExp),  -- texto dentro de la barra
-    Translate 400 285 $ Scale 0.15 0.15 $ Color black $ Text ("Tiempo: " ++ show t)  -- texto dentro de la barra
+  [ Translate 0 340 $ Color white $ rectangleSolid 1070 80,
+    Translate (-480) 335 $ Scale 0.15 0.15 $ Color black $ Text ("Robots: " ++ show nRobots),
+    Translate (-370) 335 $ Scale 0.15 0.15 $ Color black $ Text ("Projectiles: " ++ show nProy),
+    Translate (-230) 335 $ Scale 0.15 0.15 $ Color black $ Text ("Explosiones: " ++ show nExp),
+    Translate 380 335 $ Scale 0.15 0.15 $ Color black $ Text ("Tiempo: " ++ show t),
+    Translate (-480) 315 $ Scale 0.1 0.1 $ Color (greyN 0.3) $ Text "Presiona ESPACIO para pausar el juego"
   ]
 
 -- MENSAJE DEL JUEGO (pausa / gameover)
-dibujaMensaje :: String -> Color -> (Float,Float) -> Picture
-dibujaMensaje texto colorTexto (sx,sy) = Pictures
-  [ Translate 0 0 $ Color black $ Scale 2 1 $ circleSolid 90, -- Círculo de fondo
+dibujaMensajeNegrita :: String -> Color -> Float -> Float -> Float -> Float -> Picture
+dibujaMensajeNegrita texto colorTexto x y sx sy = Pictures
+  [ Color black $ Scale 2 1 $ rectangleSolid 200 200,
     -- Texto con efecto de negrita y centrado aproximado
     Pictures
-      [ Translate (dx - anchoAprox/2) (dy - altoAprox/2) $
-        Scale sx sy $ Color colorTexto $ Text texto
+      [ Translate (dx - anchoAprox/2) (dy - altoAprox/2) $ Scale sx sy $ Color colorTexto $ Text texto
       | dx <- [-1,0,1,-1,2], dy <- [-1,0,1,-1,2]  -- desplazamientos para efector de negrita en la letra
       ]
   ]
   where anchoAprox = fromIntegral (length texto) * 22  -- cada carácter ≈ 10 unidades (tamagno texto)
-        altoAprox  = 20                                 -- altura aproximada
+        altoAprox  = 20                                -- altura aproximada
 
 -- -----------------------------------------------------------------------------
 -- DIBUJA ROBOT EN LA POSICION (x,y)
-dibujaUnRobot r = Translate x y $ Pictures
+dibujaUnRobot :: GameState -> Robot -> Picture
+dibujaUnRobot gs r = Translate x y $ Pictures
   [ Translate 0 50 $ vidaRobot (getEnergia r),                -- barra de vida robot
-    Rotate anguloBody $ Color green $ rectangleSolid w h,     -- cuerpo del robot, rota según la direccion
-    Color black $ circleSolid 25,                             -- cabeza robot (centrada en el cuerpo)
+    Rotate anguloBody$ Scale 0.2 0.2 $ lateralDer (tankSprites gs ),     -- cuerpo del robot, rota según la direccion
+    Color blue $ circleSolid 10,                             -- cabeza robot (centrada en el cuerpo)
     -- cagnon robot, rota según el angulo_disparo (DatosRobot)
-     Rotate angCanon $ Translate (30) 0 $ Color black $ rectangleSolid 22 15
+     Rotate angCanon $ Scale 0.1 0.1 $ cannonSprite (tankSprites gs)
   ] where (x,y) = posicion r
           (w,h) = (anchoRobot, altoRobot)   -- tamagno rectangulo (ancho,alto del robot)
           anguloBody = vectorToAngle (direccion r) * (-1)       -- direccion en la que gira el robot
@@ -71,22 +110,20 @@ vidaRobot energiaActual = Pictures
           colorVida | energiaActual > (vidaMaxima `div` 2) = green
                     | energiaActual > (vidaMaxima `div` 4) = yellow
                     | otherwise                            = red
-
+-- -----------------------------------------------------------------------------
 -- DIBUJA PROYECTILES que lanza el robot/tanque
 dibujaProyectiles :: GameState -> Picture
-dibujaProyectiles e = Pictures $ map dibujaProyectil (allProyectiles e)
+dibujaProyectiles e = Pictures $ map (\p -> dibujaProyectil p e) (allProyectiles e) 
 
-dibujaProyectil :: Proyectil -> Picture
-dibujaProyectil p = Translate x y $ Rotate angulo $ Color blue $ Pictures
-  [ rectangleSolid w h,                          -- cuerpo del proyectil
-    Translate (w/2) 0 $ Polygon [ (0,h/2), (w,0), (0,-h/2)]   -- es un triangulo, la punta del proyectil
-  ] where (x,y) = posicion p
-          (w,h) = (Entidades.ancho p, Entidades.alto p)       -- tamagno del proyectil
-          angulo = (-vectorToAngle (direccion p))                -- direccion de movimiento
+dibujaProyectil :: Proyectil -> GameState -> Picture
+dibujaProyectil p gs= Translate x y $ Rotate angulo $ Scale 0.05 0.05 $ proyectil (tankSprites gs)
+  where (x,y) = posicion p
+        angulo = (-vectorToAngle (direccion p))                -- direccion de movimiento
 
 -- -----------------------------------------------------------------------------
 -- ANIMACIÓN DE LA EXPLOSION
 -- Imagen Explosion base (estrellas)
+estrella :: Int -> Float -> Float -> Float -> Picture
 estrella n r innerRatio rotDeg = 
   Rotate rotDeg $
   Polygon [ (radio i * cos (angulo i), radio i * sin (angulo i)) | i <- [0 .. (2*n-1)] ]
@@ -101,16 +138,32 @@ explosionBase = Pictures
     Color red $ estrella 5 (0.5*radioExplosion) 0.4 36        -- capa interior roja, rotadas
   ]
 
--- Dibujar las explosiones activas según el tiempo global
+-- Dibujar las explosiones activas según el tiempo global 
 dibujaExplosiones :: GameState -> Picture
-dibujaExplosiones e = Pictures $ map (dibujaExp (tiempo e)) (allExplosiones e)
+dibujaExplosiones e = Pictures $ map (dibujaExplosion (tiempo e) (explosionSprites e)) (allExplosiones e)
 
--- Dibuja 1 explosion según el tiempo global
-dibujaExp :: Float -> Explosion -> Picture
-dibujaExp tiempGlobal e
-  | tiempActivo < 0 = Blank              -- la explosion aun no empieza
-  | tiempActivo > (duracion e) = Blank   -- la explosion termino
-  | otherwise = Translate x y $ Scale escala escala $ explosionBase
-  where (x,y) = posExp e
-        tiempActivo = tiempGlobal - tiempoInicio e
-        escala = 1.0 + 1.0 * sin (tiempActivo * pi / (duracion e)) -- cambia el tamgnano según el tiempo activo
+-- Dibuja 1 explosion según su tipo (muerte o impacto)
+dibujaExplosion :: Float -> [Picture] -> Explosion -> Picture
+dibujaExplosion tiempGlobal sprites ex
+  | tiempActivo < 0 = Blank
+  | tiempActivo > duracion ex = Blank
+  | duracion ex == duracionExplosion = dibujaExplosionMuerte ex tiempActivo  -- explosion de muerte (estrella)
+  | otherwise = dibujaExplosionImpacto sprites ex tiempActivo                 -- explosion de impacto (sprites)
+  where tiempActivo = tiempGlobal - tiempoInicio ex
+
+-- Dibuja explosion de muerte (estrella expandiéndose)
+dibujaExplosionMuerte :: Explosion -> Float -> Picture
+dibujaExplosionMuerte ex tiempActivo = 
+    Translate x y $ Scale escala escala $ explosionBase
+    where (x,y) = posExp ex
+          escala = 1.0 + 1.0 * sin (tiempActivo * pi / duracionExplosion)
+
+-- Dibuja explosion de impacto (secuencia de sprites)
+dibujaExplosionImpacto :: [Picture] -> Explosion -> Float -> Picture
+dibujaExplosionImpacto sprites ex tiempActivo
+    | null sprites = Blank  -- si no hay sprites, no dibujamos nada
+    | otherwise = Translate x y $ Scale 0.6 0.6 $ sprites !! idxSafe
+    where (x,y) = posExp ex
+          n = length sprites
+          idx = floor (tiempActivo / duracionImpacto * fromIntegral n)
+          idxSafe = max 0 (min (n-1) idx)

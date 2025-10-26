@@ -19,7 +19,7 @@ data Entidad a = Entidad {
 -- DATOS ESPECÍFICOS DE CADA TIPO
 data DatosRobot = DatosRobot {
     energia :: Int,
-    angulo_disparo :: Angle,
+    angulo_disparo :: Angle,--valor entre 0 y 360 grados
     radar :: Distance,
     memoria :: Memoria,
     funcion_decision :: String, -- función de decisión del bot
@@ -110,21 +110,17 @@ crearProyectil id_p id_lanz pos mod_v dir ancho_p alto_p =
 detectedAgent :: Robot -> Robot -> Bool
 detectedAgent r1 r2 = distanceBetween (posicion r1) (posicion r2) <= getRadar r1
 
-
 -- Comprueba que la energía del robot sea mayor que 0
 isRobotAlive :: Robot -> Bool
 isRobotAlive r1 = getEnergia r1 > 0
-
 
 -- Contar los robots que están vivos
 countActiveRobots :: [Robot] -> Int
 countActiveRobots rs = length [r | r <- rs, isRobotAlive r] 
 
-
 -- Actualiza la velocidad de un robot con una velocidad dada
 updateRobotVelocity :: Robot -> Float -> Robot
 updateRobotVelocity robot modulo_v = robot {modulo_velocidad = modulo_v}
-
 
 -- Velocidad máxima permitida
 maxVelocity :: Float
@@ -136,8 +132,8 @@ updateVelocity :: Robot -> AccionMovimiento -> Robot
 -- Caso de acción de acelerar: acelera sin sobrepasar la velocidad máxima
 updateVelocity robot Acelera
     | v + incrementoVelocidad < maxAllowedVelocity = updateRobotVelocity robot (v + incrementoVelocidad)
-    | otherwise    = updateRobotVelocity robot maxAllowedVelocity
-    where v    = modulo_velocidad robot
+    | otherwise = updateRobotVelocity robot maxAllowedVelocity
+    where v = modulo_velocidad robot
 
 -- Caso de acción de desacelerar: desacelera sin bajar de 0
 updateVelocity robot Desacelera
@@ -154,12 +150,15 @@ updatePosition e delta_tiempo = e {posicion = (x + vx*delta_tiempo, y + vy*delta
     where (x, y) = posicion e
           (vx, vy) = multEscalar (modulo_velocidad e) (direccion e)
 
-
 -- No lo ha pedido pero creemos que necesitamos una funcion para mover el robot y el cagnon
 -- Actualiza la dirección de un robot para que el bot pueda girarlo
 updateAngleRobot :: Robot -> Vector -> Robot
 updateAngleRobot robot v = robot {direccion = v}
 
 -- Actualiza el angulo de disparo del robot para que el bot pueda girar el cagnón
+-- Normaliza el ángulo para mantenerlo entre 0 y 360
 updateAngleCanon :: Robot -> Angle -> Robot
-updateAngleCanon robot a = setAnguloDisparo robot a
+updateAngleCanon robot a = setAnguloDisparo robot normalizedAngle
+  where
+    temp = a - 360 * fromIntegral (floor (a / 360) :: Int)
+    normalizedAngle = if temp < 0 then temp + 360 else temp

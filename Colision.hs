@@ -1,7 +1,6 @@
 module Colision where
 
 import Entidades
--- hiding lo que hace es evitar los conflictos (no importar ciertas funciones o tipos con el mismo nombre)
 import Geometry
 
 -- Evento de colisión

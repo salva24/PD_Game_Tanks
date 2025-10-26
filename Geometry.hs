@@ -98,8 +98,12 @@ normaliza (x, y)
     | otherwise = (x / n, y / n)
     where n = sqrt (x^2 + y^2)
 
+-- Devuelve el ángulo de un= vector entre 0 y 360 grados
 vectorToAngle :: Vector -> Angle
-vectorToAngle (x, y) = rad2deg (atan2 y x)
+vectorToAngle (x, y) = normalizedAngle
+    where
+        angle = rad2deg (atan2 y x) -- esto lo devuelve entre -180 y 180
+        normalizedAngle = if angle < 0 then angle + 360 else angle
 
 -- Convertir ángulo a vector unitario
 angleToVector :: Angle -> Vector
@@ -126,3 +130,12 @@ isRectangleOutOfBounds :: Rectangle -> Bool
 isRectangleOutOfBounds rect =
     any (\(x, y) -> not (isInBounds (x, y) globalBounds)) vertices -- si algún vértice está fuera de los límites
     where vertices = rectangleToVertices rect -- obtenemos los vertices del rectangulo
+
+-- Resta de angulos, devuelve el delta entre el primero menos el segundo en el sentido de giro más corto. Negativo para giro horario, positivo antihorario
+calculaDeltaAngulo :: Angle -> Angle -> Angle
+calculaDeltaAngulo ang1 ang2
+    | delta > 180 = delta - 360 -- giro antihorario más corto
+    | delta < -180 = delta + 360 -- giro horario más corto
+    | otherwise = delta
+    where 
+        delta = ang1 - ang2
