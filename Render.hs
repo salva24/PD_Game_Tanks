@@ -11,13 +11,15 @@ import Hyperparams
 dibujaRender :: GameState -> Picture
 dibujaRender e
   | pantalla e == MenuInicio = menuInicioJuego
+-- | gameOver e               = Pictures [fondo e, mensajeGameOver, botonReiniciar]
   | gameOver e               = Pictures [fondo e, mensajeGameOver]
   | otherwise                = Pictures
     [ Scale 1 1 (fondo e),
       barraSuperior (length (allRobots e)) (length (allProyectiles e)) (length (allExplosiones e)) (floor(tiempo e)),
-      dibujaProyectiles e,                          -- dibuja todas los proyectiles
+      dibujaObstaculos e,                               -- dibuja obstaculos en el juego
+      dibujaProyectiles e,                              -- dibuja todas los proyectiles
       Pictures $ map (dibujaUnRobot e) (allRobots e),   -- Pasar GameState aquí
-      dibujaExplosiones e,                          -- dibuja todas las explosiones
+      dibujaExplosiones e,                              -- dibuja todas las explosiones
       if gamePausado e then mensajePausa else Blank
     ]
   where mensajePausa    = dibujaMensajeNegrita "PAUSADO" yellow 0 0 0.25 0.25
@@ -59,6 +61,14 @@ botonStart = Pictures
     Translate (-buttonTextOffsetX) (-15) $ Scale 0.3 0.3 $ Color white $ Text "START"
   ]
   where buttonTextOffsetX = botonStartWidth / 4  -- pequegno ajuste para centrar el texto visualmente
+
+-- Botón Reinicio del suejo
+botonReiniciar :: Picture
+botonReiniciar = Translate 0 (-80) $ Pictures
+  [ Color (makeColorI 220 0 0 255) $ rectangleSolid botonWidth botonHeight,
+    Color black $ rectangleWire botonWidth botonHeight,
+    Translate (-85) (-15) $ Scale 0.3 0.3 $ Color white $ Text "REINICIAR"
+  ]
 -- -----------------------------------------------------------------------------
 -- BARRA SUPERIOR DEL JUEGO (muestra la información del juego)
 barraSuperior :: Int -> Int -> Int -> Int -> Picture
@@ -74,14 +84,14 @@ barraSuperior nRobots nProy nExp t = Pictures
 -- MENSAJE DEL JUEGO (pausa / gameover)
 dibujaMensajeNegrita :: String -> Color -> Float -> Float -> Float -> Float -> Picture
 dibujaMensajeNegrita texto colorTexto x y sx sy = Pictures
-  [ Color black $ Scale 2 1 $ rectangleSolid 200 200,
+  [ Color black $ Scale 2 1 $ rectangleSolid 150 130,
     -- Texto con efecto de negrita y centrado aproximado
     Pictures
       [ Translate (dx - anchoAprox/2) (dy - altoAprox/2) $ Scale sx sy $ Color colorTexto $ Text texto
       | dx <- [-1,0,1,-1,2], dy <- [-1,0,1,-1,2]  -- desplazamientos para efector de negrita en la letra
       ]
   ]
-  where anchoAprox = fromIntegral (length texto) * 22  -- cada carácter ≈ 10 unidades (tamagno texto)
+  where anchoAprox = fromIntegral (length texto) * 20  -- cada carácter ≈ 10 unidades (tamagno texto)
         altoAprox  = 20                                -- altura aproximada
 
 -- -----------------------------------------------------------------------------
@@ -89,7 +99,7 @@ dibujaMensajeNegrita texto colorTexto x y sx sy = Pictures
 dibujaUnRobot :: GameState -> Robot -> Picture
 dibujaUnRobot gs r = Translate x y $ Pictures
   [ Translate 0 50 $ vidaRobot (getEnergia r),                -- barra de vida robot
-    Rotate anguloBody$ Scale 0.2 0.2 $ lateralDer (tankSprites gs ),     -- cuerpo del robot, rota según la direccion
+    Rotate anguloBody$ Scale 0.16 0.16 $ lateralDer (tankSprites gs ),     -- cuerpo del robot, rota según la direccion
     Color blue $ circleSolid 10,                             -- cabeza robot (centrada en el cuerpo)
     -- cagnon robot, rota según el angulo_disparo (DatosRobot)
      Rotate angCanon $ Scale 0.1 0.1 $ cannonSprite (tankSprites gs)
@@ -106,20 +116,19 @@ vidaRobot energiaActual = Pictures
     Translate desplazamiento 0 $           -- mueve la barra activa a la izquierda
       Color colorVida $ rectangleSolid anchoVida 8  -- vida actual (irá bajando conforme pasen cositas)
   ] where anchoVida = max 0 (fromIntegral energiaActual * 99 / fromIntegral vidaMaxima)
-          desplazamiento = (- (99 - anchoVida) / 2)  -- fija el lado izquierdo y recorta desde la derecha
+          desplazamiento = - ((99 - anchoVida) / 2)  -- fija el lado izquierdo y recorta desde la derecha
           colorVida | energiaActual > (vidaMaxima `div` 2) = green
                     | energiaActual > (vidaMaxima `div` 4) = yellow
                     | otherwise                            = red
 -- -----------------------------------------------------------------------------
 -- DIBUJA PROYECTILES que lanza el robot/tanque
 dibujaProyectiles :: GameState -> Picture
-dibujaProyectiles e = Pictures $ map (\p -> dibujaProyectil p e) (allProyectiles e) 
+dibujaProyectiles gs = Pictures $ map (\p -> dibujaProyectil p gs) (allProyectiles gs) 
 
 dibujaProyectil :: Proyectil -> GameState -> Picture
 dibujaProyectil p gs= Translate x y $ Rotate angulo $ Scale 0.05 0.05 $ proyectil (tankSprites gs)
   where (x,y) = posicion p
-        angulo = (-vectorToAngle (direccion p))                -- direccion de movimiento
-
+        angulo = -vectorToAngle (direccion p)                -- direccion de movimiento
 -- -----------------------------------------------------------------------------
 -- ANIMACIÓN DE LA EXPLOSION
 -- Imagen Explosion base (estrellas)
@@ -140,25 +149,27 @@ explosionBase = Pictures
 
 -- Dibujar las explosiones activas según el tiempo global 
 dibujaExplosiones :: GameState -> Picture
-dibujaExplosiones e = Pictures $ map (dibujaExplosion (tiempo e) (explosionSprites e)) (allExplosiones e)
+dibujaExplosiones gs = Pictures $ map (dibujaExplosion (tiempo gs) (explosionSprites gs)) (allExplosiones gs)
 
 -- Dibuja 1 explosion según su tipo (muerte o impacto)
 dibujaExplosion :: Float -> [Picture] -> Explosion -> Picture
 dibujaExplosion tiempGlobal sprites ex
   | tiempActivo < 0 = Blank
   | tiempActivo > duracion ex = Blank
-  | duracion ex == duracionExplosion = dibujaExplosionMuerte ex tiempActivo  -- explosion de muerte (estrella)
-  | otherwise = dibujaExplosionImpacto sprites ex tiempActivo                 -- explosion de impacto (sprites)
+  | otherwise = case tipoExp ex of
+      ExpMuerte             -> dibujaExplosionMuerte ex tiempActivo
+      ExpProyectil          -> dibujaExplosionImpacto sprites ex tiempActivo
+      ExpObstaculoExplosivo -> dibujaExplosionImpacto sprites ex tiempActivo
+      ExpCuracion           -> dibujaExplosionCurativa sprites ex tiempActivo
   where tiempActivo = tiempGlobal - tiempoInicio ex
 
 -- Dibuja explosion de muerte (estrella expandiéndose)
 dibujaExplosionMuerte :: Explosion -> Float -> Picture
-dibujaExplosionMuerte ex tiempActivo = 
-    Translate x y $ Scale escala escala $ explosionBase
-    where (x,y) = posExp ex
-          escala = 1.0 + 1.0 * sin (tiempActivo * pi / duracionExplosion)
+dibujaExplosionMuerte ex tiempActivo = Translate x y $ Scale escala escala explosionBase
+  where (x,y) = posExp ex
+        escala = 1.0 + 1.0 * sin (tiempActivo * pi / duracionExplosion)
 
--- Dibuja explosion de impacto (secuencia de sprites)
+-- Dibuja explosion de impacto (secuencia de sprites --> impacta un proyectil con un robot)
 dibujaExplosionImpacto :: [Picture] -> Explosion -> Float -> Picture
 dibujaExplosionImpacto sprites ex tiempActivo
     | null sprites = Blank  -- si no hay sprites, no dibujamos nada
@@ -167,3 +178,41 @@ dibujaExplosionImpacto sprites ex tiempActivo
           n = length sprites
           idx = floor (tiempActivo / duracionImpacto * fromIntegral n)
           idxSafe = max 0 (min (n-1) idx)
+
+-- Dibujar obstáculo curativo como una "explosión curativa"
+dibujaExplosionCurativa :: [Picture] -> Explosion -> Float -> Picture
+dibujaExplosionCurativa _ ex tiempActivo =
+  Translate x y $ Scale 2 2 $ Pictures [plusSign rot | rot <- [0,90,180,270]]
+  where (x,y) = posExp ex
+        plusSign rot = Rotate rot $ Color green $ Pictures [rectangleSolid (-3) 10, rectangleSolid 10 (-3)]
+
+-- -----------------------------------------------------------------------------
+-- DIBUJA LOS OBSTACULOS
+-- dibuja todos los obtaculos en la pantalla
+dibujaObstaculos :: GameState -> Picture
+dibujaObstaculos gs = Pictures $ map (dibujaObtaculo gs) (allObstaculos gs) 
+
+-- dibuja el tipo de obtaculo (solido/doloroso/explosivo/curativo)
+dibujaObtaculo :: GameState -> Obstaculo -> Picture
+dibujaObtaculo gs o
+  | tipo == Doloroso = Translate x y $ Scale 0.3 0.3 $ imgObstaculo (obsSprites gs) tipo    -- doloroso
+  | tipo == Explosivo =
+      Pictures
+        [ Translate x y $ Scale 0.4 0.4 $ imgObstaculo (obsSprites gs) tipo,                -- obj. explosivo
+          if getMomentoActivacion o >= 0
+            then Translate (x + 10) y $ Scale 0.3 0.3 $
+                 negrita (show (floor $ getTiempoExplosion o)) red (-10) (-5) 1 1  -- tiempo de la explosion
+          else Blank
+        ]
+  | tipo == Curativo  = Translate x y $ Scale 0.35 0.28 $ imgObstaculo (obsSprites gs) tipo              -- animación curativo como "explosión"
+  | otherwise         = Translate x y $ Scale 0.1 0.1 $ imgObstaculo (obsSprites gs) tipo   -- solido
+  where (x,y) = posicion o
+        tipo   = getTipoObstaculo o
+
+-- Func. que elige la img segun el tipo de obstaculo
+imgObstaculo :: ObsSprites -> TipoObstaculo -> Picture
+imgObstaculo sprites tipo = case tipo of
+    Solido     -> obsSolido sprites
+    Doloroso   -> obsDoloroso sprites
+    Explosivo  -> obsExplosivo sprites
+    Curativo   -> obsCurativo sprites

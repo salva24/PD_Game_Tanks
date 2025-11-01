@@ -3,6 +3,7 @@ module Memoria where
 
 import qualified Data.Map as Map
 import Geometry
+import Debug.Trace (trace)
 
 -- Esta es la memoria del Robot, para que guarde la información recopilando de la partida
 data Value = VInt Int 

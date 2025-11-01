@@ -7,7 +7,7 @@ import Hyperparams
 
 -- ACTUALIZA EL GAMESTATE EN FUNCIÓN DEL TECLADO
 handleInput :: Event -> GameState -> GameState
--- Start (Enter) solo inicia si no se ha pulsado antes
+-- Inicia el juego preseionando el botón Start (Enter)
 handleInput (EventKey (SpecialKey KeyEnter) Down _ _) e
   | pantalla e == MenuInicio && not (startPressed e) = e { pantalla = Jugando, startPressed = True }
   | otherwise                                        = e
@@ -20,6 +20,15 @@ handleInput (EventKey (MouseButton LeftButton) Down _ mousePos) e
 -- Pausa/Despausa el juego con el espacio
 handleInput (EventKey (SpecialKey KeySpace) Down _ _) e = e { gamePausado = not (gamePausado e) }
 
+-- Reinciar el juego cuando este termina
+-- handleInput (EventKey (MouseButton LeftButton) Up _ mousePos) e
+--   | gameOver e && dentroBoton mousePos = reiniciarJuego e
+--   | otherwise                          = e
+
+-- handleInput (EventKey (SpecialKey KeyEnter) Up _ _) e
+--   | gameOver e = reiniciarJuego e
+--   | otherwise  = e
+
 -- Cualquier otro evento no afecta
 handleInput _ e = e
 
@@ -29,3 +38,6 @@ clickEnStart (mx, my) = mx >= cx - halfW && mx <= cx + halfW && my >= cy - halfH
   where (cx, cy) = botonStartPos
         halfW    = botonStartWidth / 2
         halfH    = botonStartHeight / 2
+
+dentroBoton :: (Float, Float) -> Bool
+dentroBoton (x, y) = x >= -100 && x <= 100 && y >= -125 && y <= -75

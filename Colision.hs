@@ -6,7 +6,7 @@ import Geometry
 -- Evento de colisión
 data CollisionEvent = 
     RobotProjectileCollision Robot Proyectil | -- Esto sí se produce, sólo es posible colisionar un robot y un proyectil
-    RobotRobotCollision Robot Robot -- Esto no se produce nunca y solo esta en el codigo por eversiones de entregas anteriores
+    RobotRobotCollision Robot Robot -- Esto no se produce nunca y solo esta en el codigo por versiones de entregas anteriores
     deriving (Show, Eq)
 
 -- Convertir robot en rectángulo
@@ -23,6 +23,14 @@ projectileToRectangle proyectil = Rectangle {
     center = posicion proyectil,
     size = (ancho proyectil, alto proyectil),
     angleRectang = vectorToAngle (direccion proyectil)
+}
+
+--Convertir obstaculo en rectángulo
+obstacleToRectangle :: Obstaculo -> Rectangle
+obstacleToRectangle obs = Rectangle {
+    center = posicion obs,
+    size = (ancho obs, alto obs),
+    angleRectang = vectorToAngle (direccion obs)
 }
 
 -- Función para comprobar que dos proyecciones se solapan
@@ -98,4 +106,12 @@ checkCollisions robots proyectiles = detectRobotProjectileCollisions robots proy
 -- Si colisiona consigo mismo no cuenta como colision
 -- Esta funcion se usa en GameUpdates para comprobar si la nueva posicion del robot tras aplicar su movimiento es valida o no
 hasRobotCollision :: Robot -> [Robot] -> Bool
-hasRobotCollision robot otrosRobots = any (\r -> id_entidad r /= id_entidad robot && checkCollision (robotToRectangle robot) (robotToRectangle r)) otrosRobots
+hasRobotCollision robot otrosRobots = 
+    any (\r -> id_entidad r /= id_entidad robot && checkCollision (robotToRectangle robot) (robotToRectangle r)) 
+        otrosRobots
+
+
+--dado un robot comprueba las colisiones de este con todos los obstaculos y devuelve los ids de los obstaculos con los que colisiona
+hasRobotObsCollision :: Robot -> [Obstaculo] -> [Obstaculo]
+hasRobotObsCollision robot obstaculos =
+    [obs | obs <- obstaculos, checkCollision (robotToRectangle robot) (obstacleToRectangle obs)]
