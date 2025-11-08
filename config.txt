@@ -1,0 +1,13 @@
+#Configuracion para el sistema de torneos
+
+# Lista de tipos de Bots participantes
+bots = ["Francotirador", "Cazador", "Buscador", "Cobarde"]
+
+# Tamaño del area de juego (ancho,alto)
+area_size = (1000, 600)
+
+#Duracion maxima torneo (segundos)
+max_duration = 60
+
+#Numero de torneos a ejecutarse
+num_tournaments = 3

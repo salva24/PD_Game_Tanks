@@ -28,7 +28,13 @@ updateGame dt state
             state3 = state2 { allProyectiles = proyectiles_actualizados_pos }
             -- manejar colisiones de proyectiles con robots
             colisiones = verificarColisionesRobotProyectil state3 -- lista de Eventos de colisiones entre proyectiles y robots
-            state4 = procesarTodasLasColisionesProyectiles state3 colisiones
+            -- Registrar los impactos en las estadísticas
+            estadistica_con_impactos = registrarImpactos colisiones (estadisticaPartida state3)
+            state3_con_estadisticas = state3 { estadisticaPartida = estadistica_con_impactos }
+            
+            
+            
+            state4 = procesarTodasLasColisionesProyectiles state3_con_estadisticas colisiones
 
             --Obstaculos activados
             -- Actualizar tiempo restante de explosion a quellos obstaculos con getMomentoActivacion>=0
@@ -41,7 +47,14 @@ updateGame dt state
             state4_con_explosiones = state4_sin_obstaculos_explotados { allExplosiones = allExplosiones state4_sin_obstaculos_explotados ++ nuevas_explosiones }
             -- eliminar robots muertos
             robots_vivos = filter isRobotAlive (allRobots state4_con_explosiones)
-            state5 = state4_con_explosiones { allRobots = robots_vivos }
+            -- Para cada robot muerto, registrar su muerte en estadísticas
+            robots_muertos = filter (not . isRobotAlive) (allRobots state4_con_explosiones)
+            estadistica_actualizada = registrarMuertes robots_muertos (tiempo state4_con_explosiones) (estadisticaPartida state4_con_explosiones)
+            
+            state5 = state4_con_explosiones { 
+                allRobots = robots_vivos,
+                estadisticaPartida = estadistica_actualizada
+            }
             -- actualizar memoria a cada robot
             state6 = actualizaMemoriaRobots state5
             -- aplicar las decisiones de los robots: giro body, giro cagnon, disparo, aceleracion. Agnade los proyectiles disparados a la lista y actualiza los robots asegurandose de que no se producen colisiones al girar el body. Si se produce colision al girar el body, no gira
@@ -50,7 +63,7 @@ updateGame dt state
             state8=manejarDesplazamientosRobotsYColisionesObstaculos state7 dt
             -- Revisar si el juego ha terminado (si queda un solo robot)
             state9
-                | length (allRobots state8) <= 1 = state8 { gameOver = True } -- Si queda un solo robot, el juego termina
+                | length (allRobots state8) <= 1 = manejarFinPartida state8 -- Si queda un solo robot, el juego termina
                 | otherwise = state8
             --- Estado final
             nuevo_state = state9
@@ -374,3 +387,32 @@ aplicarEfectoObstaculo r state o
         obstaculos_sin_curativo = filter (\obs -> id_entidad obs /= id_entidad o) (allObstaculos state)
         
         explosion_curacion = Explosion (posicion o) (tiempo state) duracionExplosion ExpCuracion 
+
+
+manejarFinPartida :: GameState -> GameState
+manejarFinPartida state = state { 
+    gameOver = True, 
+    estadisticaPartida = nueva_estadistica 
+}
+  where
+    ganador_id
+      | null (allRobots state) = -1  -- Empate, no hay robots vivos
+      | otherwise              = id_entidad (head (allRobots state))  -- El único robot vivo es el ganador
+    
+    old_estadistica = estadisticaPartida state
+    tiempo_partida = tiempo state
+    
+    nueva_estadistica = 
+      if ganador_id /= -1 
+        then establecerGanador ganador_id tiempo_partida old_estadistica
+        else establecerGanadorCasoEmpate 
+               (idsFaltantes (tiempoVivoPorBot old_estadistica) (idsQueParticiparon state)) 
+               tiempo_partida 
+               old_estadistica
+
+-- Encontrar IDs que participaron pero no están registrados como muertos
+idsFaltantes :: [(Int, Float)] -> [Int] -> [Int]
+idsFaltantes tiemposRegistrados idsParticipantes = 
+  filter (`notElem` idsRegistrados) idsParticipantes
+  where
+    idsRegistrados = map fst tiemposRegistrados

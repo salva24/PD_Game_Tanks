@@ -1,0 +1,33 @@
+========================================
+    ESTADISTICAS DE TORNEOS DE BOTS
+========================================
+
+Numero Torneo | Ganador | Tiempo Total | Impactos por Bot | % Tiempo Vivo por Bot
+-------------------------------------------------------------------------------------
+
+TORNEO 1
+Ganador: Empate
+Duracion: 60.02 segundos
+Proyectiles impactados: Bot#2:16, Bot#1:5, Bot#4:2, Bot#3:1
+Tiempo vivo: Bot#2:60.02s, Bot#3:60.02s, Bot#4:42.42s, Bot#1:18.20s
+Porcentaje tiempo vivo: Bot#2:100.0%, Bot#3:100.0%, Bot#4:70.7%, Bot#1:30.3%
+
+TORNEO 2
+Ganador: Empate
+Duracion: 60.02 segundos
+Proyectiles impactados: Bot#1:4, Bot#2:3, Bot#4:6, Bot#3:1
+Tiempo vivo: Bot#1:60.02s, Bot#2:60.02s, Bot#3:60.02s, Bot#4:60.02s
+Porcentaje tiempo vivo: Bot#1:100.0%, Bot#2:100.0%, Bot#3:100.0%, Bot#4:100.0%
+
+TORNEO 3
+Ganador: Empate
+Duracion: 60.02 segundos
+Proyectiles impactados: Bot#3:3, Bot#1:7, Bot#2:4, Bot#4:1
+Tiempo vivo: Bot#1:60.02s, Bot#3:60.02s, Bot#4:60.02s, Bot#2:51.35s
+Porcentaje tiempo vivo: Bot#1:100.0%, Bot#3:100.0%, Bot#4:100.0%, Bot#2:85.6%
+
+
+================= RESUMEN AGREGADO =================
+Duracion media: 60.02 s
+No hubo ningun ganador claro.
+====================================================

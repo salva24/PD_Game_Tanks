@@ -84,7 +84,7 @@ anchoObstaculo = 70.0
 altoObstaculo = 40.0
 
 numeroObstaculos, dagno_Obstaculo :: Int
-numeroObstaculos = 15
+numeroObstaculos = 7
 dagno_Obstaculo = 10
 
 -- ------------------------------------------------------------
@@ -101,4 +101,6 @@ botonHeight = 50.0
 -- Centro del botón en la pantalla de inicio (se dibuja en el origen en Render)
 botonStartPos :: (Float, Float)
 botonStartPos = (0, 0)
+
+
 

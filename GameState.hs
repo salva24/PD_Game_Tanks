@@ -23,6 +23,7 @@ data TipoExp = ExpProyectil | ExpMuerte | ExpObstaculoExplosivo | ExpCuracion de
 
 -- MUESTRA EL ESTADO DE LA PARTIDA
 data GameState = GameState {
+    idsQueParticiparon :: [Int],                  -- lista de ids de bots que participaron, no recibe modificaciones y es solo como ayuda
     allRobots :: [Robot],               -- Lista con todos los tanques vivos
     allObstaculos :: [Obstaculo],       -- Lista con todos los obstáculos en el mapa
     allProyectiles :: [Proyectil],      -- Lista con todos los proyectiles activos
@@ -36,8 +37,89 @@ data GameState = GameState {
     startPressed :: Bool,               -- botón de incio de juego (start presionado)
     explosionSprites :: [Picture],      -- secuencia de la explosion (proyectil impacta robots)
     tankSprites :: TankSprites,
-    obsSprites :: ObsSprites            -- imgs para los obstaculos
+    obsSprites :: ObsSprites,            -- imgs para los obstaculos
+    estadisticaPartida :: Estadistica
 }
+-----------------------------------------------------------------------------------------
+----------ESTADISTICApARTIDA-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+
+
+data Estadistica = Estadistica {
+  proyectilesImpactadosPorBot :: [(Int, Int)],  -- (id bot, num impactos logrados)
+  tiempoVivoPorBot :: [(Int, Float)],            -- (id bot, tiempo vivo en segundos)
+  tiempoTotalPartida :: Float,                      -- duración total de la partida
+  ganador :: Int                          -- nombre del bot ganador
+} deriving (Show, Eq)
+
+-- Estadística inicial vacía
+estadisticaInicial :: Estadistica
+estadisticaInicial = Estadistica {
+  proyectilesImpactadosPorBot = [],
+  tiempoVivoPorBot = [],
+  tiempoTotalPartida = 0,
+  ganador = -1
+}
+
+-- Registrar impacto de proyectil disparado por un robot. Se guarda el id con el numero de impactos logrados por ese id
+registrarImpacto :: Int -> Estadistica -> Estadistica
+registrarImpacto botId stats = stats {
+  proyectilesImpactadosPorBot = actualizarImpactos botId (proyectilesImpactadosPorBot stats)
+}
+  where
+    actualizarImpactos :: Int -> [(Int, Int)] -> [(Int, Int)]
+    actualizarImpactos bid [] = [(bid, 1)]-- Si no existe, agregar con 1 impacto -- No deberia suceder porque deberia estar a cero en el inicial
+    actualizarImpactos bid ((id', count):rest) -- Buscar y actualizar
+      | id' == bid = (id', count + 1) : rest 
+      | otherwise  = (id', count) : actualizarImpactos bid rest
+
+-- Registrar muerte de un robot
+registrarMuerte :: Int -> Tiempo -> Estadistica -> Estadistica
+registrarMuerte botId tiempoMuerte stats = stats {
+  tiempoVivoPorBot = (botId, tiempoMuerte) : (tiempoVivoPorBot stats)
+}
+
+-- Establecer ganador
+establecerGanador :: Int -> Tiempo -> Estadistica -> Estadistica
+establecerGanador botId tiempoTotal stats = stats {
+  ganador = botId,
+  tiempoTotalPartida = tiempoTotal,
+  tiempoVivoPorBot = [(botId, tiempoTotal)] ++ (tiempoVivoPorBot stats) -- tiempo vivo es el total de la partida
+}
+
+-- Establecer ganadores en caso de empate (múltiples bots murieron simultáneamente siendo los últimos)
+establecerGanadorCasoEmpate :: [Int] -> Tiempo -> Estadistica -> Estadistica
+establecerGanadorCasoEmpate idsFaltantes tiempoTotal stats = stats {
+  ganador = -1,  -- -1 indica empate (no hay un único ganador)
+  tiempoTotalPartida = tiempoTotal,
+  tiempoVivoPorBot = agregarTiemposVivos idsFaltantes tiempoTotal (tiempoVivoPorBot stats)
+}
+  where
+    -- Agregar el tiempo de vida para todos los bots que sobrevivieron hasta el final
+    agregarTiemposVivos :: [Int] -> Float -> [(Int, Float)] -> [(Int, Float)]
+    agregarTiemposVivos [] _ tiempos = tiempos
+    agregarTiemposVivos (botId:rest) tTotal tiempos = 
+      agregarTiemposVivos rest tTotal ((botId, tTotal) : tiempos)
+
+
+-- Registrar múltiples muertes de robots
+registrarMuertes :: [Robot] -> Tiempo -> Estadistica -> Estadistica
+registrarMuertes [] _ stats = stats
+registrarMuertes (robot:resto) tiempoMuerte stats = 
+  registrarMuertes resto tiempoMuerte (registrarMuerte (id_entidad robot) tiempoMuerte stats)
+
+-- Registrar múltiples impactos desde una lista de colisiones
+registrarImpactos :: [CollisionEvent] -> Estadistica -> Estadistica
+registrarImpactos [] stats = stats
+registrarImpactos (RobotProjectileCollision _ proyectil : resto) stats =
+  registrarImpactos resto (registrarImpacto (getIdLanzador proyectil) stats)
+registrarImpactos (_ : resto) stats = 
+  registrarImpactos resto stats
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
 
 -- Menú inicial del juego / juego en curso
 data PantallaJuego = MenuInicio | Jugando deriving (Eq, Show)
@@ -62,17 +144,24 @@ incrementarIdDisponible :: GameState -> GameState
 incrementarIdDisponible estado = estado { latestAvaileableId = latestAvaileableId estado + 1 }
 
 -- Func. de reinicio del juego
-reiniciarJuego :: GameState -> IO GameState
-reiniciarJuego gs = estadoInicialAleatorio (fondo gs) (explosionSprites gs) (tankSprites gs) (obsSprites gs)
+-- reiniciarJuego :: GameState -> IO GameState
+-- reiniciarJuego gs = estadoInicialAleatorio (fondo gs) (explosionSprites gs) (tankSprites gs) (obsSprites gs)
 -- -------------------------------------------------------------
 -- ESTADO INCIIAL (posiciones aleatorias usando QuickCheck)
-estadoInicialAleatorio :: Picture -> [Picture] -> TankSprites -> ObsSprites -> IO GameState
-estadoInicialAleatorio imgFondo explosionImgs tankImgs obsImgs = do
-  -- Generar los robots con posiciones aleatorias
+estadoInicialAleatorio :: Picture -> [Picture] -> TankSprites -> ObsSprites -> [String] -> IO GameState
+estadoInicialAleatorio imgFondo explosionImgs tankImgs obsImgs nombresFuncionesDecision = do
+  -- Crear lista de RobotInfo a partir de los nombres de funciones
+  let listaRobotsInfo = [(i, nombre, fromIntegral (i * 10)) | (i, nombre) <- zip [1..] nombresFuncionesDecision]
   robotsAleatorios <- generate (generarTodosRobots [] listaRobotsInfo)
   obstaculosAleatorios <- generate (generarNObstaculos numeroObstaculos [] robotsAleatorios)
 
+  let todos_ids_robots = map id_entidad robotsAleatorios
+      estadistica_con_robots_con_disparos_a_cero =
+        estadisticaInicial { proyectilesImpactadosPorBot = [(id, 0) | id <- todos_ids_robots] }
+
+
   return GameState {
+    idsQueParticiparon = todos_ids_robots,-- lista de ids de bots que participaron
     allRobots = robotsAleatorios,
     allProyectiles = [],
     allExplosiones = [],
@@ -86,7 +175,8 @@ estadoInicialAleatorio imgFondo explosionImgs tankImgs obsImgs = do
     startPressed = False,
     explosionSprites = explosionImgs,
     tankSprites = tankImgs,
-    obsSprites = obsImgs
+    obsSprites = obsImgs,
+    estadisticaPartida = estadistica_con_robots_con_disparos_a_cero
   }
 
 -- Generador personalizado para posiciones dentro de los límites del mapa
@@ -159,12 +249,12 @@ genTipoObstaculo = elements allTipos
 
 
 -- Lista de robots a crear
-listaRobotsInfo :: [RobotInfo]
-listaRobotsInfo = [
-  (1, "Robot Francotirador", 0),
-  (2, "Robot Cazador", 180),
-  (3, "Robot Cobarde", 0)
-  ]
+-- listaRobotsInfo :: [RobotInfo]
+-- listaRobotsInfo = [
+--   (1, "Robot Francotirador", 0),
+--   (2, "Robot Cazador", 180),
+--   (3, "Robot Cobarde", 0)
+--   ]
 
 -- Genera un robot con posición aleatoria válida
 generarRobotAleatorio :: [Robot] -> RobotInfo -> Gen Robot

@@ -26,13 +26,13 @@ data AccionesRobot = AccionesRobot
 -- Ejemplos de algunas funciones para IA. Devuelve una memoria modificada y las acciones a realizar
 decidirBot :: [Robot]-> [Obstaculo] -> Robot -> (Memoria,AccionesRobot)
 decidirBot robots_visibles obstaculos robot
-    | nombre == "Robot Tonto" = decisionRobotTonto robots_visibles obstaculos robot
-    | nombre == "Robot Acelera" = decisionRobotAcelera robots_visibles obstaculos robot
-    | nombre == "Robot Gira" = decisionRobotGira robots_visibles obstaculos robot
-    | nombre == "Robot Cazador" = decidirBotCazador robots_visibles obstaculos robot
-    | nombre == "Robot Cobarde" = decidirBotCobarde robots_visibles obstaculos robot
-    | nombre == "Robot Buscador" = decidirBotBuscador robots_visibles obstaculos robot
-    | nombre == "Robot Francotirador" = decidirBotFrancotirador robots_visibles obstaculos robot
+    | nombre == "Tonto" = decisionRobotTonto robots_visibles obstaculos robot
+    | nombre == "Acelera" = decisionRobotAcelera robots_visibles obstaculos robot
+    | nombre == "Gira" = decisionRobotGira robots_visibles obstaculos robot
+    | nombre == "Cazador" = decidirBotCazador robots_visibles obstaculos robot
+    | nombre == "Cobarde" = decidirBotCobarde robots_visibles obstaculos robot
+    | nombre == "Buscador" = decidirBotBuscador robots_visibles obstaculos robot
+    | nombre == "Francotirador" = decidirBotFrancotirador robots_visibles obstaculos robot
     | otherwise = (memEmpty,accionesVacias)  -- Patrón por defecto: no hace nada
     where nombre = getFuncionDecision robot
 

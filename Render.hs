@@ -12,7 +12,7 @@ dibujaRender :: GameState -> Picture
 dibujaRender e
   | pantalla e == MenuInicio = menuInicioJuego
 -- | gameOver e               = Pictures [fondo e, mensajeGameOver, botonReiniciar]
-  | gameOver e               = Pictures [fondo e, mensajeGameOver]
+--  | gameOver e               = Pictures [fondo e, mensajeGameOver]
   | otherwise                = Pictures
     [ Scale 1 1 (fondo e),
       barraSuperior (length (allRobots e)) (length (allProyectiles e)) (length (allExplosiones e)) (floor(tiempo e)),
@@ -23,14 +23,14 @@ dibujaRender e
       if gamePausado e then mensajePausa else Blank
     ]
   where mensajePausa    = dibujaMensajeNegrita "PAUSADO" yellow 0 0 0.25 0.25
-        mensajeGameOver = dibujaMensajeNegrita ("Ganador: " ++ ganadorText e) red 0 0 0.3 0.3
+        -- = dibujaMensajeNegrita ("Ganador: " ++ ganadorText e) red 0 0 0.3 0.3
 
--- obtener id del ganador: si hay exactamente un robot vivo, usa su id_entidad
-ganadorText :: GameState -> String
-ganadorText gs
-  | null robotsVivos = "N/A"
-  | otherwise        = show (id_entidad (head robotsVivos))
-  where robotsVivos = filter isRobotAlive (allRobots gs)
+-- -- obtener id del ganador: si hay exactamente un robot vivo, usa su id_entidad
+-- ganadorText :: GameState -> String
+-- ganadorText gs
+--   | null robotsVivos = "N/A"
+--   | otherwise        = show (id_entidad (head robotsVivos))
+--   where robotsVivos = filter isRobotAlive (allRobots gs)
 -- -----------------------------------------------------------------------------
 -- PANTALLA DE INICIO DEL JUEGO
 menuInicioJuego :: Picture
